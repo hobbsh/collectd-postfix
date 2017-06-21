@@ -2,6 +2,9 @@
 
 This plugin collects mail metrics from the postfix mail log. I have only tested this on CentOS 6 with Python 2.6.6
 
+Example data in Grafana
+![collectd-postfix-grafana](http://imgur.com/TrQJmzg)
+
 ## Supported Platforms
 
 ### Tested on
