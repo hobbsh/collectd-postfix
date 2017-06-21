@@ -5,7 +5,6 @@
 import collectd
 import socket
 import datetime
-import subprocess
 import re
 
 NAME = 'postfix'
@@ -94,7 +93,7 @@ def read_callback():
   logger('verb', "beginning read_callback")
   info = get_stats()
 
-  if not info:
+  if not info or all(metric == 0 for metric in info.values()):
     logger('warn', "%s: No data received" % NAME)
     return
 
