@@ -9,7 +9,7 @@ Example data in Grafana
 ## Supported Platforms
 
 ### Tested on
-- CentOS 6 (Python 2.6)
+- CentOS 6 (Python 2.6) with collectd 5.5.3
 
 ## Usage
 
