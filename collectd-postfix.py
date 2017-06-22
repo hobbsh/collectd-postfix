@@ -95,11 +95,6 @@ def parse_mailqueue():
 
   return messages
 
-"""
-Read last ~300KB of data to make sure we get at least the whole last minute
-NOTE: If your metrics are getting truncated because you have a lot of maillog volume, increase MAILLOG_CHUNK
-  MAILLOG_CHUNK should always be negative - for more reading look at the python seek() docs
-"""
 def read_log():
   f = open(MAILLOG, 'r')
   lines = f.read()
@@ -109,7 +104,10 @@ def read_log():
 def parse_log(lines, metric_name, metric_regex):
   matches = re.findall(metric_regex, lines)
   if 'delay' in metric_name:
-    #In smaller than 60 second collection intervals, there are issues with null data
+    """
+    In smaller than 60 second collection intervals, there are issues with null data 
+    beacuse collectd-postfix takes ~15 seconds depending on your mail volume
+    """
     try:
       delay = (sum(float(i) for i in matches) / len(matches))
     except ZeroDivisionError:
