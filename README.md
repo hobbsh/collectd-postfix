@@ -15,7 +15,13 @@ Follows standard collectd-python plugin configuration. You need to make sure you
 - Configure the plugin in your collectd config `<COLLECTD_ROOT>/etc/conf.d/postfix.conf` or however you include plugins
 
 
-There are only two module config options at the moment - an example config:
+Below is an example module config. Current allowed options are:
+```
+- Verbose (boolean) - use verbose logging 
+- Maillog (string) - location of postfix mail log
+- CheckMailQ (boolean) - check the postfix mail queue (shells out with subprocess)
+```
+
 ```
 <LoadPlugin python>
     Globals true
@@ -28,6 +34,7 @@ There are only two module config options at the moment - an example config:
     <Module postfix>
       Verbose false
       Maillog "/var/log/maillog"
+      CheckMailQ true
     </Module>
 </Plugin>
 ```
