@@ -10,7 +10,6 @@ import re
 NAME = 'postfix'
 VERBOSE_LOGGING = False
 MAILLOG = '/var/log/maillog'
-MAILLOG_CHUNK = -300000
 CHECK_MAILQUEUE = False
 METRICS = {
   "connection-in-open": "postfix/smtpd[[0-9]+]: connect from",
@@ -103,15 +102,12 @@ NOTE: If your metrics are getting truncated because you have a lot of maillog vo
 """
 def read_log():
   f = open(MAILLOG, 'r')
-  f.seek(MAILLOG_CHUNK, 2)
   lines = f.read()
   return lines
 
 # Return average delay or count of matched lines for each metric_name/regex pair
 def parse_log(lines, metric_name, metric_regex):
   matches = re.findall(metric_regex, lines)
-  if VERBOSE_LOGGING:
-    logger('info',  matches)
   if 'delay' in metric_name:
     #In smaller than 60 second collection intervals, there are issues with null data
     try:
