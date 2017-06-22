@@ -11,6 +11,7 @@ NAME = 'postfix'
 VERBOSE_LOGGING = False
 MAILLOG = '/var/log/maillog'
 MAILLOG_CHUNK = -300000
+CHECK_MAILQUEUE = False
 METRICS = {
   "connection-in-open": "postfix/smtpd[[0-9]+]: connect from",
   "connection-in-close": "postfix/smtpd[[0-9]+]: disconnect from",
@@ -20,6 +21,7 @@ METRICS = {
   "connection-in-TLS-established": "postfix/smtpd[[0-9]+]: [A-Za-z]+ TLS connection established from",
   "connection-out-TLS-setup": "postfix/smtpd[[0-9]+]: setting up TLS connection to",
   "connection-out-TLS-established": "postfix/smtpd[[0-9]+]: [A-Za-z]+ TLS connection established to",
+  "ipt_bytes": "size=([0-9]*)",
   "status-deferred": "status=deferred",
   "status-forwarded": "status=forwarded",
   "status-reject": "status=reject",
@@ -47,12 +49,54 @@ def get_stats():
     count = parse_log(log_chunk, metric_name, metric_regex)
     metric_counts[metric_name] = count
 
+  if CHECK_MAILQUEUE:
+    code_counts, q_size = process_mailqueue()
+    metric_counts['total-queue-size'] = q_size
+    for code, value in code_counts.items():
+      index = 'queue-reason-%s' % code
+      metric_counts[index] = value
+
   if VERBOSE_LOGGING:
     logger('info', metric_counts)
-
+    
   return metric_counts
 
-""" 
+def process_mailqueue():
+  messages = parse_mailqueue()
+  code_counts = dict()
+  total_queue_size = 0
+  for msg in messages:
+    code = re.search('.*said:\s+(\d+)\s.*', msg['reason'])
+    total_queue_size += int(msg['size'])
+    if code:
+      response_code = code.group(1)
+      try:
+        code_counts[response_code] += 1
+      except KeyError, e:
+        code_counts[response_code] = 1
+
+  return code_counts, total_queue_size
+
+def parse_mailqueue():
+  from subprocess import Popen, PIPE, STDOUT
+  messages = []
+  cmd = 'mailq'
+  p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
+  output = p.stdout
+  hre = '.*Queue ID.*'
+  idre = '^(?P<id>[0-9A-Z]+)\s+(?P<size>[0-9]+)\s+(?P<dow>\S+)\s+(?P<mon>\S+)\s+(?P<day>[0-9]+)\s+(?P<time>\S+)\s+(?P<sender>\S+)(?:\n|\r)(?P<reason>\(.*\w+.*\S+)(?:\n|\r)\s+(?P<recipient>[\w\@\w\.\w]+)'
+
+  lines = re.split('\n\n', output.read())
+  for line in lines:
+    line = line.rstrip()
+    if re.search(hre,line): continue
+    id_match = re.finditer(idre, line)
+    for m in re.finditer(idre, line):
+      messages.append(m.groupdict())
+
+  return messages
+
+"""
 Read last ~300KB of data to make sure we get at least the whole last minute
 NOTE: If your metrics are getting truncated because you have a lot of maillog volume, increase MAILLOG_CHUNK
   MAILLOG_CHUNK should always be negative - for more reading look at the python seek() docs
@@ -69,23 +113,30 @@ def parse_log(lines, metric_name, metric_regex):
   if VERBOSE_LOGGING:
     logger('info',  matches)
   if 'delay' in metric_name:
+    #In smaller than 60 second collection intervals, there are issues with null data
     try:
       delay = (sum(float(i) for i in matches) / len(matches))
     except ZeroDivisionError:
       delay = 0
     return delay
+  elif metric_name == 'ipt_bytes':
+    ipt_bytes = (sum(int(i) for i in matches))
+    return ipt_bytes
   else:
     return len(matches)
 
 def configure_callback(conf):
-  global MAILLOG, VERBOSE_LOGGING
+  global MAILLOG, VERBOSE_LOGGING, CHECK_MAILQUEUE
   MAILLOG = ""
   VERBOSE_LOGGING = False
+  CHECK_MAILQUEUE = False
   for node in conf.children:
     if node.key == "Verbose":
       VERBOSE_LOGGING = bool(node.values[0])
     elif node.key == "Maillog":
       MAILLOG = node.values[0]
+    elif node.key == "CheckMailQ":
+      CHECK_MAILQUEUE = bool(node.values[0])
     else:
       logger('warn', 'Unknown config key: %s' % node.key)
 
