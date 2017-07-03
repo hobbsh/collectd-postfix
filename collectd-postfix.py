@@ -40,11 +40,13 @@ METRICS = {
 
 def get_stats():
   now = datetime.datetime.now()
-  last_minute = (now - datetime.timedelta(minutes=1)).strftime("%b %d %H:%M")
+  month = now.strftime("%b")
+  day = now.strftime("%-d")
+  last_minute = (now - datetime.timedelta(minutes=1)).strftime("%H:%M")
   metric_counts = {}
   log_chunk = read_log()
   for metric_name, metric_regex in METRICS.iteritems():
-    metric_regex = "%s.*%s" % (last_minute, metric_regex)
+    metric_regex = "%s\s+%s\s+%s.*%s" % (month, day, last_minute, metric_regex)
     count = parse_log(log_chunk, metric_name, metric_regex)
     metric_counts[metric_name] = count
 
