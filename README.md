@@ -32,9 +32,9 @@ Below is an example module config. Current allowed options are:
 </LoadPlugin>
 
 <Plugin python>
-    # postfix.py is at /opt/collectd/share/collectd/postfix.py
+    # collectd-postfix.py is at /opt/collectd/share/collectd/collectd-postfix.py
     ModulePath "/opt/collectd/share/collectd/"
-    Import "postfix"
+    Import "collectd-postfix"
     <Module postfix>
       Verbose false
       Maillog "/var/log/maillog"
